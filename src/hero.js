@@ -36,6 +36,19 @@ GS.updatePcrCooldowns = function (delta) {
 
 // Mutations (attaque) -> cible = monstre le plus proche
 GS.castMutation = function (scene, type) {
+  // Si hybridation prête (2 mutations choisies), on lance combo
+  if (GS.hybrid.first && GS.hybrid.second) {
+    const first = GS.hybrid.first;
+    const second = GS.hybrid.second;
+    GS.hybrid.first = null;
+    GS.hybrid.second = null;
+
+    GS.pushMsg("Combo Hybridation !");
+    GS.castMutation(scene, first);
+    GS.castMutation(scene, second);
+    return;
+  }
+
   const target = GS.nearestMonsterInRange(scene, 220);
   if (!target) return;
 
@@ -90,8 +103,13 @@ GS.castPcr = function (scene, type) {
     GS.pushMsg(`Dénaturation : ${count} ennemis immobilisés.`);
 
   } else if (type === "hybridation") {
-    GS.hero._hybridBoostMs = 6000;
-    GS.pushMsg("Hybridation : prochaine mutation renforcée (6s).");
+    // Ouvre le menu de sélection
+    GS.hybrid.active = true;
+    GS.hybrid.step = 1;
+    GS.hybrid.first = null;
+    GS.hybrid.second = null;
+    GS.openRadialMenu(scene, "Choisis la mutation 1");
+    GS.pushMsg("Hybridation : choisis 2 mutations à combiner.");
 
   } else if (type === "elongation") {
     const heal = 25;

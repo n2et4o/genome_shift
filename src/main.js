@@ -32,7 +32,7 @@ function create() {
     invPanel: null,
     invText: null
   };
-
+  this.GS.isPaused = false;
 
   // FASTA global (utilisé par Monster)
   const fastaText = this.cache.text.get("dna_fasta");
@@ -41,6 +41,15 @@ function create() {
   // Hero init
   GS.hero.dna = GS.fasta["hero"] ?? GS.hero.dna;
   GS.applyDnaToHero(GS.hero.dna);
+
+  // PCR state : hybridation step + targets
+  GS.hybrid = {
+    active: false,
+    step: 0,
+    first: null,
+    second: null
+  };
+
 
   // Player rect
   const player = this.add.rectangle(140, 140, 28, 28, 0x4ade80);
@@ -120,11 +129,35 @@ function create() {
   // ✅ Génère les chunks autour du joueur au départ
   GS.ensureChunksAroundPlayer(this);
 
+  function handleMutationKey(type) {
+    // Si radial ouvert => sélection hybridation
+    if (GS.radial.visible && GS.hybrid.active) {
+      if (GS.hybrid.step === 1) {
+        GS.hybrid.first = type;
+        GS.hybrid.step = 2;
+        GS.pushMsg("Choisis la mutation 2");
+        GS.closeRadialMenu(this);
+        GS.openRadialMenu(this, "Choisis la mutation 2");
+        return;
+      } else if (GS.hybrid.step === 2) {
+        GS.hybrid.second = type;
+        GS.hybrid.active = false;
+        GS.hybrid.step = 0;
+        GS.closeRadialMenu(this);
+        GS.pushMsg(`Hybridation prête : ${GS.hybrid.first} + ${GS.hybrid.second}`);
+        return;
+      }
+    }
+
+    // Sinon => attaque normale
+    GS.castMutation(this, type);
+  }
+  
   // Input: Mutations
-  this.input.keyboard.on("keydown-Z", () => GS.castMutation(this, "inversion"));
-  this.input.keyboard.on("keydown-S", () => GS.castMutation(this, "substitution"));
-  this.input.keyboard.on("keydown-A", () => GS.castMutation(this, "insertion"));
-  this.input.keyboard.on("keydown-E", () => GS.castMutation(this, "deletion"));
+  this.input.keyboard.on("keydown-Z", () => handleMutationKey.call(this, "inversion"));
+  this.input.keyboard.on("keydown-S", () => handleMutationKey.call(this, "substitution"));
+  this.input.keyboard.on("keydown-A", () => handleMutationKey.call(this, "insertion"));
+  this.input.keyboard.on("keydown-E", () => handleMutationKey.call(this, "deletion"));
 
   // Input: PCR
   this.input.keyboard.on("keydown-W", () => GS.castPcr(this, "denaturation"));
@@ -134,10 +167,31 @@ function create() {
   // Input: Inventory toggle
   this.input.keyboard.on("keydown-I", () => {
     this.GS.invOpen = !this.GS.invOpen;
+
     this.GS.invPanel.setVisible(this.GS.invOpen);
     this.GS.invText.setVisible(this.GS.invOpen);
-    if (this.GS.invOpen) GS.refreshInventoryUI(this);
+
+    if (this.GS.invOpen) {
+      setPaused(this, true);
+      GS.refreshInventoryUI(this);
+      GS.pushMsg("Inventaire (pause)");
+    } else {
+      setPaused(this, false);
+      GS.pushMsg("Retour au jeu");
+    }
   });
+
+  // Input: Close inventory with ESC
+  this.input.keyboard.on("keydown-ESC", () => {
+    if (this.GS.invOpen) {
+      this.GS.invOpen = false;
+      this.GS.invPanel.setVisible(false);
+      this.GS.invText.setVisible(false);
+      setPaused(this, false);
+      GS.pushMsg("Retour au jeu");
+    }
+  });
+
 
   // Monde plus grand que l'écran (exemple)
   this.physics.world.setBounds(0, 0, 3000, 2000);
@@ -155,6 +209,17 @@ function create() {
       g.fillCircle(x, y, 2);
     }
   }
+
+  function setPaused(scene, paused) {
+  scene.GS.isPaused = paused;
+
+  // Pause physics
+  scene.physics.world.isPaused = paused;
+
+  // Optionnel : bloquer inputs de déplacement en pause
+  // (on le fera via update)
+}
+
 }
 
 function update(time, delta) {
@@ -163,6 +228,11 @@ function update(time, delta) {
 
   const player = this.GS.player;
   const cursors = this.GS.cursors;
+
+  if (this.GS.isPaused) {
+    GS.updateMessages(delta); // on laisse les messages vivre
+    return;
+  }
 
   // Player movement
   const body = player.body;
