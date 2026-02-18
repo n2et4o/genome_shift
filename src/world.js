@@ -7,7 +7,7 @@ GS.world = {
   CHUNK_SIZE: 900,
   VIEW_RADIUS: 1,     // 1 => 3x3 chunks autour du joueur
   activeChunks: new Map(), // key => { gfx, spawned }
-  maxEntitiesPerChunk: { monsters: 2, loot: 1 }
+  maxEntitiesPerChunk: { monsters: 1.1, loot: 1 }
 };
 
 // hash simple (déterministe) pour "random" stable par chunk
@@ -45,12 +45,32 @@ GS.ensureChunksAroundPlayer = function (scene) {
   }
 
   // 2) détruire ceux trop loin
-  for (const [k, chunk] of GS.world.activeChunks.entries()) {
+  // for (const [k, chunk] of GS.world.activeChunks.entries()) {
+  //   const [ccx, ccy] = k.split(",").map(Number);
+  //   if (Math.abs(ccx - cx) > R || Math.abs(ccy - cy) > R) {
+  //     GS.despawnChunk(scene, ccx, ccy);
+  //   }
+  // }
+
+  const kids = GS.monsters.getChildren();
+  if (kids.length > 60) {
+    for (let i = 0; i < 10; i++) kids[i].destroy();
+  }
+
+   // 2) marquer ceux trop loin (ne pas delete pendant l'itération)
+  const toRemove = [];
+  for (const k of GS.world.activeChunks.keys()) {
     const [ccx, ccy] = k.split(",").map(Number);
     if (Math.abs(ccx - cx) > R || Math.abs(ccy - cy) > R) {
-      GS.despawnChunk(scene, ccx, ccy);
+      toRemove.push({ ccx, ccy });
     }
   }
+
+  // supprimer après
+  for (const r of toRemove) {
+    GS.despawnChunk(scene, r.ccx, r.ccy);
+  }
+
 };
 
 GS.spawnChunk = function (scene, cx, cy) {
@@ -81,27 +101,31 @@ GS.spawnChunk = function (scene, cx, cy) {
 };
 
 GS.despawnChunk = function (scene, cx, cy) {
-    const k = GS.chunkKey(cx, cy);
-    const chunk = GS.world.activeChunks.get(k);
-    if (!chunk) return;
+  const k = GS.chunkKey(cx, cy);
+  const chunk = GS.world.activeChunks.get(k);
+  if (!chunk) return;
 
-    // Détruire le décor
-    chunk.gfx.destroy();
+  chunk.gfx.destroy();
 
-    for (const l of GS.lootGroup.getChildren()) {
-        if (l && l.chunkKey === k) l.destroy();
-    }
+  for (const m of GS.monsters.getChildren()) {
+    if (m && m.gs && m.gs.chunkKey === k) m.destroy();
+  }
+  const kids = GS.monsters.getChildren();
+  if (kids.length > 60) {
+    for (let i = 0; i < 10; i++) kids[i].destroy();
+  }
 
-    GS.world.activeChunks.delete(k);
 
-    for (const l of GS.lootGroup.getChildren()) {
+  for (const l of GS.lootGroup.getChildren()) {
     if (l && l.chunkKey === k) {
-        if (l.label) l.label.destroy();
-        l.destroy();
+      if (l.label) l.label.destroy();
+      l.destroy();
     }
-    }
+  }
 
+  GS.world.activeChunks.delete(k);
 };
+
 
 GS.spawnEntitiesForChunk = function (scene, cx, cy) {
   const k = GS.chunkKey(cx, cy);
@@ -112,6 +136,8 @@ GS.spawnEntitiesForChunk = function (scene, cx, cy) {
   // --- Monstres
   const nMonsters = Math.floor(GS.randBetween(1, GS.world.maxEntitiesPerChunk.monsters + 1,
     GS.hash2(cx, cy, GS.world.seed)));
+  //const nMonsters = GS.world.maxEntitiesPerChunk.monsters;
+
 
   for (let i = 0; i < nMonsters; i++) {
     const rx = GS.hash2(cx * 1000 + i, cy * 1000 + 33, GS.world.seed);
@@ -125,7 +151,7 @@ GS.spawnEntitiesForChunk = function (scene, cx, cy) {
     const id = (kind === "dark") ? "dark_shifter" : (rKind > 0.55 ? "monster_wolf" : "monster_slime");
 
     const m = GS.spawnMonster(scene, id, x, y, { kind });
-    m.data.chunkKey = k;
+    m.gs.chunkKey = k;
   }
 
   // --- Loot PCR (rare)
@@ -141,6 +167,10 @@ GS.spawnEntitiesForChunk = function (scene, cx, cy) {
       const loot = GS.spawnLoot(scene, pick, lx, ly);
       // spawnLoot ne renvoie rien chez toi -> on va le corriger plus bas
       // on tagge dans equipement.js
+      if (loot) {
+        loot.chunkKey = k;
+        if (loot.label) loot.label.setScrollFactor(1);
+      }
     }
   }
   

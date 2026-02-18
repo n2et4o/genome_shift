@@ -52,6 +52,34 @@ GS.onLootPickup = function (scene, loot) {
 
   if (loot.label) loot.label.destroy();
   loot.destroy();
+
+  const unlockedNow = GS.checkPcrUnlock();
+
+  if (unlockedNow) {
+    if (scene?.GS?.pcrHud) {
+      scene.GS.pcrHud.setTitle("PCR"); // ✅ affiche le titre seulement maintenant
+    }
+    GS.pushMsg("✅ PCR débloquée ! Touches: W (dénaturation), X (hybridation), C (élongation)");
+
+    if (scene?.GS?.pcrHud) {
+      scene.GS.pcrHud.updateSlots([
+        { key: "W", name: "Dénaturation", enabled: true },
+        { key: "X", name: "Hybridation", enabled: true },
+        { key: "C", name: "Élongation", enabled: true }
+      ]);
+    }
+  } else {
+    // optionnel : garder les cercles visibles mais verrouillés
+    if (scene?.GS?.pcrHud) {
+      scene.GS.pcrHud.updateSlots([
+        { key: "W", name: "Dénaturation", enabled: false },
+        { key: "X", name: "Hybridation", enabled: false },
+        { key: "C", name: "Élongation", enabled: false }
+      ]);
+    }
+  }
+
+
 };
 
 
@@ -60,31 +88,57 @@ GS.checkPcrUnlock = function () {
   const ok = keys.every(k => GS.inventory.pcr[k].have);
   GS.inventory.pcrUnlocked = ok;
   return ok;
+
 };
 
 // UI Inventaire
 GS.refreshInventoryUI = function (scene) {
-  const invText = scene.GS.invText;
-  if (!invText) return;
+  const items = [];
 
+  // Communs
+  for (const k of Object.keys(GS.inventory.common)) {
+    const it = GS.inventory.common[k];
+    items.push({ name: it.name, have: it.have, desc: it.desc, cat: "Commun" });
+  }
+
+  // PCR
+  for (const k of Object.keys(GS.inventory.pcr)) {
+    const it = GS.inventory.pcr[k];
+    items.push({ name: it.name, have: it.have, desc: it.desc, cat: "PCR" });
+  }
+
+  scene.GS.invItems = items;
+
+  // Clamp index
+  scene.GS.invIndex = Phaser.Math.Clamp(scene.GS.invIndex ?? 0, 0, items.length - 1);
+
+  // Liste avec curseur
   const lines = [];
-  lines.push("📒 Carnet d'inventaire — PCR");
-  lines.push(`PCR: ${GS.inventory.pcrUnlocked ? "✅ Débloquée (W/X/C)" : "🔒 Verrouillée"}`);
-  lines.push("");
-  lines.push("Objets communs :");
-  for (const k of Object.keys(GS.inventory.common)) lines.push(`- ✅ ${GS.inventory.common[k].name}`);
-  lines.push("");
-  lines.push("Réactifs à trouver :");
-  for (const k of Object.keys(GS.inventory.pcr)) {
-    const it = GS.inventory.pcr[k];
-    lines.push(`- ${it.have ? "✅" : "❌"} ${it.name}`);
-  }
-  lines.push("");
-  lines.push("Descriptions :");
-  for (const k of Object.keys(GS.inventory.pcr)) {
-    const it = GS.inventory.pcr[k];
-    lines.push(`• ${it.name} : ${it.desc}`);
+  lines.push("— Communs —");
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (it.cat !== "Commun") continue;
+    const cursor = (i === scene.GS.invIndex) ? "▶ " : "  ";
+    const mark = it.have ? "✅" : "❌";
+    lines.push(`${cursor}${mark} ${it.name}`);
   }
 
-  invText.setText(lines.join("\n"));
+  lines.push("");
+  lines.push("— Réactifs PCR —");
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (it.cat !== "PCR") continue;
+    const cursor = (i === scene.GS.invIndex) ? "▶ " : "  ";
+    const mark = it.have ? "✅" : "❌";
+    lines.push(`${cursor}${mark} ${it.name}`);
+  }
+
+  scene.GS.invList.setText(lines.join("\n"));
+
+  // Description du sélectionné
+  const sel = items[scene.GS.invIndex];
+  scene.GS.invDesc.setText(
+    `${sel.name}\n\n${sel.desc}\n\nCatégorie : ${sel.cat}`
+  );
 };
+

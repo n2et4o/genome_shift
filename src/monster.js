@@ -27,7 +27,7 @@ GS.spawnMonster = function (scene, fastaId, x, y, opts = {}) {
   rect.body.setBounce(1, 1); // rebondit sur les limites
 
 
-  rect.data = {
+  rect.gs = {
     id: fastaId,
     kind: opts.kind ?? "normal",
     dna,
@@ -53,13 +53,15 @@ GS.spawnMonster = function (scene, fastaId, x, y, opts = {}) {
 
 // AI movement
 GS.applyMonsterMovement = function (scene, m) {
-  if (m.data.effects.stunMs > 0) {
+  // ✅ si le monstre a été détruit pendant les effets, on saute
+  if (!m || !m.active || !m.body) return;
+  if (m.gs.effects.stunMs > 0) {
     m.body.setVelocity(0);
     return;
   }
 
   const spd = GS.currentMonsterSpeed(m);
-  const aggroRange = (m.data.kind === "dark") ? 620 : 360;
+  const aggroRange = (m.gs.kind === "dark") ? 620 : 360;
   const player = scene.GS.player;
 
   const d = Phaser.Math.Distance.Between(player.x, player.y, m.x, m.y);
@@ -78,14 +80,14 @@ GS.applyMonsterMovement = function (scene, m) {
 };
 
 GS.currentMonsterSpeed = function (m) {
-  const base = m.data.speed;
-  if (m.data.effects.slowMs > 0) return Math.max(40, Math.floor(base * 0.45));
+  const base = m.gs.speed;
+  if (m.gs.effects.slowMs > 0) return Math.max(40, Math.floor(base * 0.45));
   return base;
 };
 
 GS.currentMonsterAtk = function (m) {
-  const base = m.data.atk;
-  if (m.data.effects.atkDebuffMs > 0) return Math.max(1, base - m.data.effects.atkDebuffValue);
+  const base = m.gs.atk;
+  if (m.gs.effects.atkDebuffMs > 0) return Math.max(1, base - m.gs.effects.atkDebuffValue);
   return base;
 };
 
@@ -99,29 +101,29 @@ GS.onHeroHit = function (scene, monster) {
   GS.hero.hp -= dmg;
   GS.flashRect(scene.GS.player, 0xfacc15, 90);
 
-  if (monster.data.kind === "dark") {
+  if (monster.gs.kind === "dark") {
     console.log("⚠ Dark Shifter touched the hero (future: genome shift).");
   }
 };
 
 // Effects
-GS.applySlow = (m, ms) => m.data.effects.slowMs = Math.max(m.data.effects.slowMs, ms);
-GS.applyStun = (m, ms) => m.data.effects.stunMs = Math.max(m.data.effects.stunMs, ms);
+GS.applySlow = (m, ms) => m.gs.effects.slowMs = Math.max(m.gs.effects.slowMs, ms);
+GS.applyStun = (m, ms) => m.gs.effects.stunMs = Math.max(m.gs.effects.stunMs, ms);
 
 GS.applyDot = function (m, totalMs, tickMs, dmgPerTick) {
-  m.data.effects.dotMs = Math.max(m.data.effects.dotMs, totalMs);
-  m.data.effects.dotTickMs = tickMs;
-  m.data.effects._dotAcc = 0;
-  m.data.effects._dotDmg = dmgPerTick;
+  m.gs.effects.dotMs = Math.max(m.gs.effects.dotMs, totalMs);
+  m.gs.effects.dotTickMs = tickMs;
+  m.gs.effects._dotAcc = 0;
+  m.gs.effects._dotDmg = dmgPerTick;
 };
 
 GS.applyAtkDebuff = function (m, ms, value) {
-  m.data.effects.atkDebuffMs = Math.max(m.data.effects.atkDebuffMs, ms);
-  m.data.effects.atkDebuffValue = Math.max(m.data.effects.atkDebuffValue, value);
+  m.gs.effects.atkDebuffMs = Math.max(m.gs.effects.atkDebuffMs, ms);
+  m.gs.effects.atkDebuffValue = Math.max(m.gs.effects.atkDebuffValue, value);
 };
 
 GS.updateMonsterEffects = function (m, delta) {
-  const e = m.data.effects;
+  const e = m.gs.effects;
   if (e.slowMs > 0) e.slowMs = Math.max(0, e.slowMs - delta);
   if (e.stunMs > 0) e.stunMs = Math.max(0, e.stunMs - delta);
   if (e.atkDebuffMs > 0) e.atkDebuffMs = Math.max(0, e.atkDebuffMs - delta);
@@ -132,9 +134,9 @@ GS.updateMonsterEffects = function (m, delta) {
 
     if (e._dotAcc >= e.dotTickMs) {
       e._dotAcc = 0;
-      m.data.hp -= Math.max(1, e._dotDmg);
+      m.gs.hp -= Math.max(1, e._dotDmg);
       GS.flashRect(m, 0xffffff, 40);
-      if (m.data.hp <= 0) m.destroy();
+      if (m.gs.hp <= 0) m.destroy();
     }
   }
 };
@@ -153,9 +155,9 @@ GS.nearestMonsterInRange = function (scene, range) {
 };
 
 GS.dealToMonster = function (scene, m, dmg) {
-  const real = Math.max(1, dmg - m.data.def);
-  m.data.hp -= real;
-  if (m.data.hp <= 0) { m.destroy(); return; }
+  const real = Math.max(1, dmg - m.gs.def);
+  m.gs.hp -= real;
+  if (m.gs.hp <= 0) { m.destroy(); return; }
 
   const player = scene.GS.player;
   const angle = Phaser.Math.Angle.Between(player.x, player.y, m.x, m.y);

@@ -83,35 +83,50 @@ GS.openRadialMenu = function(scene, title) {
     color: "#ffffff"
   }).setScrollFactor(0);
 
+  GS.radial.titleText = t;
+  
+
+
   // 4 cercles
   const options = [
     { key: "inversion",   label: "Z  Inversion",   x: cx,     y: cy - 80 },
-    { key: "substitution",label: "S  Substitution",x: cx + 120, y: cy },
-    { key: "insertion",   label: "A  Insertion",   x: cx,     y: cy + 80 },
-    { key: "deletion",    label: "E  Délétion",    x: cx - 120, y: cy }
+    { key: "deletion",    label: "E  Délétion",    x: cx + 120, y: cy },
+    { key: "substitution",label: "S  Substitution",x: cx - 120, y: cy },
+    { key: "insertion",   label: "A  Insertion",   x: cx,     y: cy + 80 }
+    
   ];
 
   const circles = [];
   for (const opt of options) {
-    const circle = scene.add.circle(opt.x, opt.y, 28, 0xffffff, 0.18)
-      .setScrollFactor(0);
-    const txt = scene.add.text(opt.x + 40, opt.y - 10, opt.label, {
+    const circle = scene.add.circle(opt.x, opt.y, 14, 0xffffff, 0.09).setScrollFactor(0);
+    const keyLetter = opt.label.split(" ")[0]; // Z/S/A/E
+    const keyTxt = scene.add.text(opt.x - 3, opt.y - 5, keyLetter, {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#ffffff"
+    }).setScrollFactor(0);
+
+    const name = opt.label.slice(3); // "Inversion"...
+    const txt = scene.add.text(opt.x + 40, opt.y - 10, name, {
       fontFamily: "Arial",
       fontSize: "16px",
       color: "#ffffff"
     }).setScrollFactor(0);
-    circles.push({ opt, circle, txt });
+
+    circles.push({ opt, circle, keyTxt, txt });
+
   }
 
-  c.add([bg, t, ...circles.flatMap(o => [o.circle, o.txt])]);
+  c.add([bg, t, ...circles.flatMap(o => [o.circle, o.keyTxt, o.txt])]);
+
 
   GS.radial.container = c;
   GS.radial.items = circles;
   GS.radial.visible = true;
 
   // Pause pendant le menu
-  scene.GS.isPaused = true;
-  scene.physics.world.isPaused = true;
+  GS.setPaused(scene, true);
+
 };
 
 GS.closeRadialMenu = function(scene) {
@@ -121,8 +136,118 @@ GS.closeRadialMenu = function(scene) {
   GS.radial.visible = false;
 
   // Reprendre seulement si pas inventaire
-  if (!scene.GS.invOpen) {
-    scene.GS.isPaused = false;
-    scene.physics.world.isPaused = false;
-  }
+  // Reprendre uniquement si inventaire fermé
+  if (!scene.GS.invOpen) GS.setPaused(scene, false);
+
 };
+
+// Croix DPAD 
+GS.createDpad = function(scene) {
+  const x = 70;
+  const y = scene.cameras.main.height - 120;
+
+  const c = scene.add.container(0, 0).setDepth(1200);
+  c.setScrollFactor?.(0);
+
+  const base = scene.add.rectangle(x, y, 120, 120, 0x000000, 0.35).setScrollFactor(0);
+  const up    = scene.add.rectangle(x, y-35, 28, 28, 0xffffff, 0.15).setScrollFactor(0);
+  const down  = scene.add.rectangle(x, y+35, 28, 28, 0xffffff, 0.15).setScrollFactor(0);
+  const left  = scene.add.rectangle(x-35, y, 28, 28, 0xffffff, 0.15).setScrollFactor(0);
+  const right = scene.add.rectangle(x+35, y, 28, 28, 0xffffff, 0.15).setScrollFactor(0);
+  const mid   = scene.add.rectangle(x, y, 22, 22, 0xffffff, 0.08).setScrollFactor(0);
+
+  const t = scene.add.text(x - 32, y - 70, "Déplacement", {
+    fontFamily: "Arial",
+    fontSize: "12px",
+    color: "#ffffff"
+  }).setScrollFactor(0);
+
+  c.add([base, up, down, left, right, mid, t]);
+  return c;
+};
+
+// Radial HUD
+GS.createRadialHud = function(scene, x, y, title, slots, scale = 1) {
+  const c = scene.add.container(0, 0).setDepth(1300);
+  c.setScrollFactor?.(0);
+
+  const bgSize = 210 * scale;
+  const titleOffsetX = 25 * scale;
+  const titleOffsetY = 125 * scale;
+
+  const bg = scene.add.rectangle(x, y, bgSize, bgSize, 0x000000, 0.22).setScrollFactor(0);
+  const t = scene.add.text(x - titleOffsetX, y - titleOffsetY , title, {
+    fontFamily: "Arial",
+    fontSize: `${Math.round(14 * scale)}px`,
+    color: "#ffffff"
+  }).setScrollFactor(0);
+
+  const ring = [];
+  const n = slots.length;
+  const radius = 62 * scale;
+  const circleR = 22 * scale;
+
+
+  for (let i = 0; i < n; i++) {
+    const ang = (-Math.PI / 2) + (i * (2 * Math.PI / n));
+    const px = x + Math.cos(ang) * radius;
+    const py = y + Math.sin(ang) * radius;
+
+    const slot = slots[i];
+    const enabled = !!slot.enabled;
+
+    const circle = scene.add.circle(px, py, circleR, 0xffffff, enabled ? 0.16 : 0.06).setScrollFactor(0);
+
+    const keyTxt = scene.add.text(px - 6*scale, py - 10*scale, enabled ? slot.key : "", {
+      fontFamily: "Arial",
+      fontSize: `${Math.round(16 * scale)}px`,
+      color: "#ffffff"
+    }).setScrollFactor(0);
+
+    const nameTxt = scene.add.text( (px - 45) + 30*scale, 23 + py - 10*scale, enabled ? slot.name : "—", {
+      fontFamily: "Arial",
+      fontSize: `${Math.round(14 * scale)}px`,
+      color: enabled ? "#ffffff" : "#777777"
+    }).setScrollFactor(0);
+
+
+    ring.push({ circle, keyTxt, nameTxt });
+  }
+
+  c.add([bg, t, ...ring.flatMap(r => [r.circle, r.keyTxt, r.nameTxt])]);
+
+  // petit helper pour update
+  c._ring = ring;
+  c._title = t;
+  c.setTitle = function(newTitle) {
+    c._title.setText(newTitle || "");
+  };
+  c._x = x;
+  c._y = y;
+  c._slots = slots;
+
+  c.updateSlots = function(newSlots) {
+    c._slots = newSlots;
+    for (let i = 0; i < c._ring.length; i++) {
+      const slot = newSlots[i];
+      const enabled = !!slot.enabled;
+      const r = c._ring[i];
+
+      r.circle.setFillStyle(0xffffff, enabled ? 0.16 : 0.06);
+      r.keyTxt.setText(enabled ? slot.key : "");
+      r.nameTxt.setText(enabled ? slot.name : "—");
+      r.nameTxt.setColor(enabled ? "#ffffff" : "#777777");
+    }
+  };
+
+  return c;
+};
+
+GS.setPaused = function(scene, paused) {
+  scene.GS.isPaused = paused;
+  scene.physics.world.isPaused = paused;
+};
+
+GS.setRadialTitle = function(scene, txt){
+    if (GS.radial.titleText) GS.radial.titleText.setText(txt);
+  };

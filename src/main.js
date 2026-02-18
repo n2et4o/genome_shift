@@ -45,9 +45,11 @@ function create() {
   // PCR state : hybridation step + targets
   GS.hybrid = {
     active: false,
+    selecting: false,
     step: 0,
     first: null,
-    second: null
+    second: null,
+    ready: false
   };
 
 
@@ -77,13 +79,60 @@ function create() {
 
 
   // Spawn monsters
-  GS.spawnMonster(this, "monster_slime", 650, 220, { kind: "normal" });
+  /*GS.spawnMonster(this, "monster_slime", 650, 220, { kind: "normal" });
   GS.spawnMonster(this, "monster_wolf", 760, 360, { kind: "normal" });
   GS.spawnMonster(this, "dark_shifter", 620, 390, { kind: "dark" });
-  
+  */
 
   // UI
   this.GS.uiText = this.add.text(16, 16, "", { fontFamily: "Arial", fontSize: "16px", color: "#fff" });
+  // Radial menu init (hidden)
+  this.GS.dpad = GS.createDpad(this);
+
+  // HUD radials (près du dpad)
+  const camW = this.cameras.main.width;
+  const camH = this.cameras.main.height;
+
+  // Mutation : à gauche, au-dessus du dpad
+  this.GS.mutationHud = GS.createRadialHud(this, 180, camH - 75, "Mutations", [
+    { key: "Z", name: "Inversion", enabled: true },
+    { key: "E", name: "Délétion", enabled: true },
+    { key: "S", name: "Substitution", enabled: true },
+    { key: "A", name: "Insertion", enabled: true }
+    
+  ], 0.75); // 👈 réduit
+
+  // PCR : à droite de l'écran, plus bas
+  this.GS.pcrHud = GS.createRadialHud(
+    this,
+    camW - 120,
+    camH - 70,
+    GS.inventory.pcrUnlocked ? "PCR" : "",   // ✅ titre caché si lock
+    [
+      { key: "W", name: "Dénaturation", enabled: GS.inventory.pcrUnlocked },
+      { key: "X", name: "Hybridation", enabled: GS.inventory.pcrUnlocked },
+      { key: "C", name: "Élongation", enabled: GS.inventory.pcrUnlocked }
+    ],
+    0.75
+  );
+
+
+
+  // Mutations (toujours actives)
+  /*this.GS.mutationHud = GS.createRadialHud(this, 180, camH - 70, "Mutations", [
+    { key: "Z", name: "Inversion", enabled: true },
+    { key: "S", name: "Substitution", enabled: true },
+    { key: "A", name: "Insertion", enabled: true },
+    { key: "E", name: "Délétion", enabled: true }
+  ]);*/
+
+  // PCR (sera grisé si lock)
+  /*this.GS.pcrHud = GS.createRadialHud(this, camW - 120, camH - 70, "PCR", [
+    { key: "W", name: "Dénaturation", enabled: GS.inventory.pcrUnlocked },
+    { key: "X", name: "Hybridation", enabled: GS.inventory.pcrUnlocked },
+    { key: "C", name: "Élongation", enabled: GS.inventory.pcrUnlocked }
+  ]);*/
+
 
   GS.msgText = this.add.text(16, 90, "", {
     fontFamily: "Arial",
@@ -93,21 +142,35 @@ function create() {
     padding: { x: 8, y: 6 }
   }).setDepth(999);
 
-  this.GS.helpText = this.add.text(16, H - 70,
+  /*this.GS.helpText = this.add.text(16, H - 70,
     "Déplacement: flèches | Mutations: Z Inversion, S Substitution, A Insertion, E Délétion | I inventaire",
     { fontFamily: "Arial", fontSize: "14px", color: "#ccc" }
-  );
+  );*/
 
-  // Inventaire UI
-  this.GS.invPanel = this.add.rectangle(W - 260, 170, 480, 280, 0x000000, 0.65)
-    .setOrigin(0.5).setDepth(1000).setVisible(false);
+  // --- Inventaire RPG UI (caché) ---
+  this.GS.invOpen = false;
+  this.GS.invIndex = 0;
 
-  this.GS.invText = this.add.text(W - 480, 50, "", {
-    fontFamily: "Arial",
-    fontSize: "14px",
-    color: "#ffffff",
-    wordWrap: { width: 440 }
-  }).setDepth(1001).setVisible(false);
+  this.GS.invPanel = this.add.rectangle(W/2, H/2, 820, 420, 0x000000, 0.75)
+    .setDepth(2000).setVisible(false).setScrollFactor(0);
+
+  this.GS.invTitle = this.add.text(W/2 - 380, H/2 - 190, "Inventaire", {
+    fontFamily: "Arial", fontSize: "22px", color: "#ffffff"
+  }).setDepth(2001).setVisible(false).setScrollFactor(0);
+
+  this.GS.invList = this.add.text(W/2 - 380, H/2 - 140, "", {
+    fontFamily: "Arial", fontSize: "16px", color: "#ffffff",
+    lineSpacing: 6
+  }).setDepth(2001).setVisible(false).setScrollFactor(0);
+
+  this.GS.invDescBox = this.add.rectangle(W/2 + 170, H/2 + 10, 380, 280, 0x111111, 0.85)
+    .setDepth(2001).setVisible(false).setScrollFactor(0);
+
+  this.GS.invDesc = this.add.text(W/2 + 10, H/2 - 110, "", {
+    fontFamily: "Arial", fontSize: "16px", color: "#ffffff",
+    wordWrap: { width: 360 }
+  }).setDepth(2002).setVisible(false).setScrollFactor(0);
+
 
   GS.refreshInventoryUI(this);
 
@@ -118,10 +181,16 @@ function create() {
 
   this.GS.uiText.setScrollFactor(0).setDepth(1000);
   GS.msgText.setScrollFactor(0).setDepth(1000);
-  this.GS.helpText.setScrollFactor(0).setDepth(1000);
+  /*this.GS.helpText.setScrollFactor(0).setDepth(1000);*/
 
   this.GS.invPanel.setScrollFactor(0).setDepth(1000);
-  this.GS.invText.setScrollFactor(0).setDepth(1001);
+  /*this.GS.invText.setScrollFactor(0).setDepth(1001);*/
+  this.GS.invPanel.setScrollFactor(0).setDepth(2000);
+  this.GS.invTitle.setScrollFactor(0).setDepth(2001);
+  this.GS.invList.setScrollFactor(0).setDepth(2001);
+  this.GS.invDescBox.setScrollFactor(0).setDepth(2001);
+  this.GS.invDesc.setScrollFactor(0).setDepth(2002);
+
 
 
   // Overlap monsters -> hero hit
@@ -136,13 +205,15 @@ function create() {
         GS.hybrid.first = type;
         GS.hybrid.step = 2;
         GS.pushMsg("Choisis la mutation 2");
-        GS.closeRadialMenu(this);
-        GS.openRadialMenu(this, "Choisis la mutation 2");
+        GS.hybrid.step = 2;
+        GS.setRadialTitle(this, "Choisis la mutation 2");
+
         return;
       } else if (GS.hybrid.step === 2) {
         GS.hybrid.second = type;
-        GS.hybrid.active = false;
+        GS.hybrid.selecting = false;
         GS.hybrid.step = 0;
+        GS.hybrid.ready = true;
         GS.closeRadialMenu(this);
         GS.pushMsg(`Hybridation prête : ${GS.hybrid.first} + ${GS.hybrid.second}`);
         return;
@@ -152,7 +223,7 @@ function create() {
     // Sinon => attaque normale
     GS.castMutation(this, type);
   }
-  
+
   // Input: Mutations
   this.input.keyboard.on("keydown-Z", () => handleMutationKey.call(this, "inversion"));
   this.input.keyboard.on("keydown-S", () => handleMutationKey.call(this, "substitution"));
@@ -168,17 +239,38 @@ function create() {
   this.input.keyboard.on("keydown-I", () => {
     this.GS.invOpen = !this.GS.invOpen;
 
-    this.GS.invPanel.setVisible(this.GS.invOpen);
-    this.GS.invText.setVisible(this.GS.invOpen);
+    const v = this.GS.invOpen;
+
+    this.GS.invPanel.setVisible(v);
+    this.GS.invTitle.setVisible(v);
+    this.GS.invList.setVisible(v);
+    this.GS.invDescBox.setVisible(v);
+    this.GS.invDesc.setVisible(v);
+
+    if (v) GS.refreshInventoryUI(this);
 
     if (this.GS.invOpen) {
-      setPaused(this, true);
+      GS.setPaused(this, true);
       GS.refreshInventoryUI(this);
       GS.pushMsg("Inventaire (pause)");
     } else {
-      setPaused(this, false);
+      GS.setPaused(this, false);
       GS.pushMsg("Retour au jeu");
     }
+
+  });
+
+  this.input.keyboard.on("keydown-UP", () => {
+    if (!this.GS.invOpen) return;
+    this.GS.invIndex = Math.max(0, this.GS.invIndex - 1);
+    GS.refreshInventoryUI(this);
+  });
+
+  this.input.keyboard.on("keydown-DOWN", () => {
+    if (!this.GS.invOpen) return;
+    const max = (this.GS.invItems?.length ?? 1) - 1;
+    this.GS.invIndex = Math.min(max, this.GS.invIndex + 1);
+    GS.refreshInventoryUI(this);
   });
 
   // Input: Close inventory with ESC
@@ -186,15 +278,21 @@ function create() {
     if (this.GS.invOpen) {
       this.GS.invOpen = false;
       this.GS.invPanel.setVisible(false);
-      this.GS.invText.setVisible(false);
-      setPaused(this, false);
+      this.GS.invPanel.setVisible(false);
+      this.GS.invTitle.setVisible(false);
+      this.GS.invList.setVisible(false);
+      this.GS.invDescBox.setVisible(false);
+      this.GS.invDesc.setVisible(false);
+
+      GS.setPaused(this, false);
       GS.pushMsg("Retour au jeu");
     }
   });
 
 
   // Monde plus grand que l'écran (exemple)
-  this.physics.world.setBounds(0, 0, 3000, 2000);
+  this.physics.world.setBounds(-50000, -50000, 100000, 100000);
+  //this.physics.world.setBounds(0, 0, 3000, 2000);
 
   // Caméra suit le joueur
   this.cameras.main.startFollow(this.GS.player, true, 0.08, 0.08);
@@ -202,13 +300,13 @@ function create() {
   
 
   // Décor simple (points)
-  const g = this.add.graphics();
+  /*const g = this.add.graphics();
   g.fillStyle(0x1f1f1f, 1);
   for (let x = 0; x < worldW; x += 60) {
     for (let y = 0; y < worldH; y += 60) {
       g.fillCircle(x, y, 2);
     }
-  }
+  }*/
 
   function setPaused(scene, paused) {
   scene.GS.isPaused = paused;
@@ -245,6 +343,8 @@ function update(time, delta) {
   // Monsters update
   for (const m of GS.monsters.getChildren()) {
     GS.updateMonsterEffects(m, delta);
+    // si le monstre a été détruit pendant les effets, on saute
+    if (!m || !m.active || !m.body) continue;
     GS.applyMonsterMovement(this, m);
   }
 
@@ -258,7 +358,7 @@ function update(time, delta) {
 
   if (GS.hero.hp <= 0) {
     GS.hero.hp = 0;
-    this.GS.helpText.setText("💀 Game Over (refresh la page).");
+    GS.pushMsg("💀 Game Over (refresh la page).");
     player.body.setVelocity(0);
     player.body.enable = false;
   }
