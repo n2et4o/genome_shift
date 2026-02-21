@@ -47,13 +47,20 @@ GS.spawnMonster = function (scene, fastaId, x, y, opts = {}) {
   };
 
   rect.body.setVelocity(Phaser.Math.Between(-80, 80), Phaser.Math.Between(-80, 80));
+
   GS.monsters.add(rect);
+
+  //  ici seulement
+  if (typeof GS.attachHpBar === "function") GS.attachHpBar(scene, rect);
+
   return rect;
 };
 
+
+
 // AI movement
 GS.applyMonsterMovement = function (scene, m) {
-  // ✅ si le monstre a été détruit pendant les effets, on saute
+  //   si le monstre a été détruit pendant les effets, on saute
   if (!m || !m.active || !m.body) return;
   if (m.gs.effects.stunMs > 0) {
     m.body.setVelocity(0);
@@ -96,6 +103,11 @@ GS.onHeroHit = function (scene, monster) {
   const now = scene.time.now;
   if (now - GS.lastDamageAt < 600) return;
   GS.lastDamageAt = now;
+
+  if (monster.gs?.kind === "dark" || monster.kind === "dark") {
+    GS.applyGenomeShiftFromDarkShifter(scene);
+  }
+
 
   const dmg = Math.max(1, GS.currentMonsterAtk(monster) - GS.hero.def);
   GS.hero.hp -= dmg;
@@ -157,7 +169,13 @@ GS.nearestMonsterInRange = function (scene, range) {
 GS.dealToMonster = function (scene, m, dmg) {
   const real = Math.max(1, dmg - m.gs.def);
   m.gs.hp -= real;
-  if (m.gs.hp <= 0) { m.destroy(); return; }
+
+  if (m.gs.hp <= 0) {
+    if (m.hpBg) m.hpBg.destroy();
+    if (m.hpBar) m.hpBar.destroy();
+    m.destroy();
+    return;
+  }
 
   const player = scene.GS.player;
   const angle = Phaser.Math.Angle.Between(player.x, player.y, m.x, m.y);

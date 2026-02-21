@@ -9,6 +9,15 @@ GS.hero = {
   _hybridBoostMs: 0
 };
 
+GS.hero.effects = {
+  slowMs: 0,
+  atkDebuffMs: 0,
+  atkDebuffValue: 0
+};
+
+GS.hero.lastGenomeHitAt = 0;
+
+
 GS.applyDnaToHero = function (dna) {
   const len = Math.max(4, dna.length);
   const gc = (dna.match(/[GC]/g) || []).length;
@@ -119,4 +128,83 @@ GS.castPcr = function (scene, type) {
     GS.hero.hp = Math.min(GS.hero.maxHp, GS.hero.hp + heal);
     GS.pushMsg(`Élongation : +${heal} HP.`);
   }
+};
+
+GS.mutateDnaOnce = function(dna, type) {
+  if (!dna || dna.length < 4) dna = "ATCG";
+
+  const bases = ["A","T","C","G"];
+  const i = Phaser.Math.Between(0, dna.length - 1);
+
+  if (type === "substitution") {
+    const current = dna[i];
+    const b = Phaser.Utils.Array.RemoveRandomElement(bases.slice());
+    // assure différent
+    const newBase = (b === current) ? bases[(bases.indexOf(b)+1)%4] : b;
+    return dna.slice(0,i) + newBase + dna.slice(i+1);
+  }
+
+  if (type === "insertion") {
+    const newBase = Phaser.Utils.Array.GetRandom(bases);
+    return dna.slice(0,i) + newBase + dna.slice(i);
+  }
+
+  if (type === "deletion") {
+    if (dna.length <= 4) return dna; // évite ADN trop court
+    return dna.slice(0,i) + dna.slice(i+1);
+  }
+
+  if (type === "inversion") {
+    const a = Phaser.Math.Between(0, dna.length - 2);
+    const b = Phaser.Math.Between(a+1, dna.length - 1);
+    const mid = dna.slice(a, b+1).split("").reverse().join("");
+    return dna.slice(0,a) + mid + dna.slice(b+1);
+  }
+
+  return dna;
+};
+
+GS.applyGenomeShiftFromDarkShifter = function(scene) {
+  const now = scene.time.now;
+
+  // cooldown anti-spam (ex: 2.5s)
+  if (now - GS.hero.lastGenomeHitAt < 2500) return;
+  GS.hero.lastGenomeHitAt = now;
+
+  // choisir mutation aléatoire
+  const choices = ["substitution","insertion","deletion","inversion"];
+  const type = Phaser.Utils.Array.GetRandom(choices);
+
+  const before = GS.hero.dna;
+  GS.hero.dna = GS.mutateDnaOnce(GS.hero.dna, type);
+
+  const saved = localStorage.getItem("GS_HERO_DNA");
+  if (saved && /^[ATCGN]+$/i.test(saved)) {
+    GS.hero.dna = saved.toUpperCase();
+  } else {
+    GS.hero.dna = fasta["hero"] ?? GS.hero.dna;
+  }
+  GS.applyDnaToHero(GS.hero.dna);
+  localStorage.setItem("GS_HERO_DNA", GS.hero.dna);
+
+
+
+
+  // effet selon mutation
+  if (type === "substitution") {
+    GS.hero.effects.atkDebuffMs = 4000;
+    GS.hero.effects.atkDebuffValue = 3;
+    GS.pushMsg("⚠ Dark Shifter : Substitution ! ATK réduit (4s).");
+  } else if (type === "insertion") {
+    GS.hero.effects.slowMs = 3000;
+    GS.pushMsg("⚠ Dark Shifter : Insertion ! Ralentissement (3s).");
+  } else if (type === "deletion") {
+    GS.hero.hp = Math.max(1, GS.hero.hp - 10);
+    GS.pushMsg("⚠ Dark Shifter : Délétion ! -10 HP.");
+  } else if (type === "inversion") {
+    GS.hero.effects.slowMs = 2000;
+    GS.pushMsg("⚠ Dark Shifter : Inversion ! Confusion (slow 2s).");
+  }
+
+  GS.pushMsg(`ADN: ${before} → ${GS.hero.dna}`);
 };

@@ -129,6 +129,7 @@ GS.openRadialMenu = function(scene, title) {
 
 };
 
+
 GS.closeRadialMenu = function(scene) {
   if (GS.radial.container) GS.radial.container.destroy(true);
   GS.radial.container = null;
@@ -251,3 +252,35 @@ GS.setPaused = function(scene, paused) {
 GS.setRadialTitle = function(scene, txt){
     if (GS.radial.titleText) GS.radial.titleText.setText(txt);
   };
+
+// creation des barre de vie des ennemis(monsters et dark shifters)
+GS.attachHpBar = function(scene, m) {
+  // évite double création
+  if (m.hpBg || m.hpBar) return;
+
+  m.hpBg  = scene.add.rectangle(m.x, m.y - 22, 34, 6, 0x111111, 0.9).setDepth(10);
+  m.hpBar = scene.add.rectangle(m.x, m.y - 22, 34, 6, 0xef4444, 1).setDepth(11);
+
+  // dans le monde (doit suivre la caméra)
+  m.hpBg.setScrollFactor(1);
+  m.hpBar.setScrollFactor(1);
+};
+
+
+// Met à jour toutes les barres HP (position + taille)
+GS.updateAllHpBars = function () {
+  if (!GS.monsters) return;
+
+  for (const m of GS.monsters.getChildren()) {
+    if (!m || !m.active || !m.gs) continue;
+
+    if (m.hpBg)  m.hpBg.setPosition(m.x, m.y - 22);
+    if (m.hpBar) m.hpBar.setPosition(m.x, m.y - 22);
+
+    const hp = m.gs.hp ?? 0;
+    const maxHp = m.gs.maxHp ?? 1;
+    const r = Phaser.Math.Clamp(hp / maxHp, 0, 1);
+
+    if (m.hpBar) m.hpBar.width = 34 * r;
+  }
+};

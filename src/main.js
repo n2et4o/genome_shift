@@ -61,9 +61,14 @@ function create() {
 
   this.GS.cursors = this.input.keyboard.createCursorKeys();
 
-  // Monsters group
+  
+  // Monsters group (  AVANT darkshifters)
   GS.monsters = this.physics.add.group();
 
+  // darkshifter
+  GS.initDarkShifters(this);
+  GS.spawnDarkShifter(this, 600, 300);
+  GS.spawnDarkShifter(this, 900, 500);
   // Loot group
   GS.lootGroup = this.physics.add.staticGroup();
 
@@ -77,15 +82,8 @@ function create() {
   // Overlap loot
   this.physics.add.overlap(player, GS.lootGroup, (p, loot) => GS.onLootPickup(this, loot), null, this);
 
-
-  // Spawn monsters
-  /*GS.spawnMonster(this, "monster_slime", 650, 220, { kind: "normal" });
-  GS.spawnMonster(this, "monster_wolf", 760, 360, { kind: "normal" });
-  GS.spawnMonster(this, "dark_shifter", 620, 390, { kind: "dark" });
-  */
-
   // UI
-  this.GS.uiText = this.add.text(16, 16, "", { fontFamily: "Arial", fontSize: "16px", color: "#fff" });
+  this.GS.uiText = this.add.text(16, 130, "", { fontFamily: "Arial", fontSize: "16px", color: "#fff" });
   // Radial menu init (hidden)
   this.GS.dpad = GS.createDpad(this);
 
@@ -100,14 +98,14 @@ function create() {
     { key: "S", name: "Substitution", enabled: true },
     { key: "A", name: "Insertion", enabled: true }
     
-  ], 0.75); // 👈 réduit
+  ], 0.75); //   réduit
 
   // PCR : à droite de l'écran, plus bas
   this.GS.pcrHud = GS.createRadialHud(
     this,
     camW - 120,
     camH - 70,
-    GS.inventory.pcrUnlocked ? "PCR" : "",   // ✅ titre caché si lock
+    GS.inventory.pcrUnlocked ? "PCR" : "",   //   titre caché si lock
     [
       { key: "W", name: "Dénaturation", enabled: GS.inventory.pcrUnlocked },
       { key: "X", name: "Hybridation", enabled: GS.inventory.pcrUnlocked },
@@ -115,24 +113,6 @@ function create() {
     ],
     0.75
   );
-
-
-
-  // Mutations (toujours actives)
-  /*this.GS.mutationHud = GS.createRadialHud(this, 180, camH - 70, "Mutations", [
-    { key: "Z", name: "Inversion", enabled: true },
-    { key: "S", name: "Substitution", enabled: true },
-    { key: "A", name: "Insertion", enabled: true },
-    { key: "E", name: "Délétion", enabled: true }
-  ]);*/
-
-  // PCR (sera grisé si lock)
-  /*this.GS.pcrHud = GS.createRadialHud(this, camW - 120, camH - 70, "PCR", [
-    { key: "W", name: "Dénaturation", enabled: GS.inventory.pcrUnlocked },
-    { key: "X", name: "Hybridation", enabled: GS.inventory.pcrUnlocked },
-    { key: "C", name: "Élongation", enabled: GS.inventory.pcrUnlocked }
-  ]);*/
-
 
   GS.msgText = this.add.text(16, 90, "", {
     fontFamily: "Arial",
@@ -142,10 +122,6 @@ function create() {
     padding: { x: 8, y: 6 }
   }).setDepth(999);
 
-  /*this.GS.helpText = this.add.text(16, H - 70,
-    "Déplacement: flèches | Mutations: Z Inversion, S Substitution, A Insertion, E Délétion | I inventaire",
-    { fontFamily: "Arial", fontSize: "14px", color: "#ccc" }
-  );*/
 
   // --- Inventaire RPG UI (caché) ---
   this.GS.invOpen = false;
@@ -195,7 +171,7 @@ function create() {
 
   // Overlap monsters -> hero hit
   this.physics.add.overlap(player, GS.monsters, (p, m) => GS.onHeroHit(this, m), null, this);
-  // ✅ Génère les chunks autour du joueur au départ
+  //   Génère les chunks autour du joueur au départ
   GS.ensureChunksAroundPlayer(this);
 
   function handleMutationKey(type) {
@@ -307,16 +283,31 @@ function create() {
       g.fillCircle(x, y, 2);
     }
   }*/
+   // === HUD HP HERO ===
+  this.GS.heroHpBg = this.add.rectangle(20, 60, 220, 14, 0x222222, 0.9)
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(3000);
 
-  function setPaused(scene, paused) {
-  scene.GS.isPaused = paused;
+  this.GS.heroHpBar = this.add.rectangle(20, 60, 220, 14, 0x22c55e, 1)
+    .setOrigin(0, 0.5)
+    .setScrollFactor(0)
+    .setDepth(3001);
 
-  // Pause physics
-  scene.physics.world.isPaused = paused;
+  this.GS.heroHpLabel = this.add.text(20, 40, "HP", {
+    fontFamily: "Arial", fontSize: "14px", color: "#ffffff"
+  }).setScrollFactor(0).setDepth(3002);
 
-  // Optionnel : bloquer inputs de déplacement en pause
-  // (on le fera via update)
-}
+
+//   function setPaused(scene, paused) {
+//   scene.GS.isPaused = paused;
+
+//   // Pause physics
+//   scene.physics.world.isPaused = paused;
+
+//   // Optionnel : bloquer inputs de déplacement en pause
+//   // (on le fera via update)
+// }
 
 }
 
@@ -326,35 +317,64 @@ function update(time, delta) {
 
   const player = this.GS.player;
   const cursors = this.GS.cursors;
+  // en tout début de update
+  if (time % 500 < delta) console.log("paused=", this.GS.isPaused, "invOpen=", this.GS.invOpen, "radial=", GS.radial.visible);
 
   if (this.GS.isPaused) {
     GS.updateMessages(delta); // on laisse les messages vivre
+    //console.log(this.GS.setPaused(scene, true));
     return;
   }
 
   // Player movement
-  const body = player.body;
-  body.setVelocity(0);
-  if (cursors.left.isDown) body.setVelocityX(-GS.hero.speed);
-  else if (cursors.right.isDown) body.setVelocityX(GS.hero.speed);
-  if (cursors.up.isDown) body.setVelocityY(-GS.hero.speed);
-  else if (cursors.down.isDown) body.setVelocityY(GS.hero.speed);
+    const body = player.body;
+    body.setVelocity(0);
+
+    // calcul speed réelle AVANT d'appliquer
+    let spd = GS.hero.speed;
+
+    if (GS.hero.effects.slowMs > 0) {
+      spd = Math.floor(spd * 0.6);
+    }
+
+    // Si tu veux gérer la confusion plus tard, tu pourras inverser ici
+
+    if (cursors.left.isDown) body.setVelocityX(-spd);
+    else if (cursors.right.isDown) body.setVelocityX(spd);
+
+    if (cursors.up.isDown) body.setVelocityY(-spd);
+    else if (cursors.down.isDown) body.setVelocityY(spd);
+
+  // === Update HUD hero HP ===
+  const ratio = Phaser.Math.Clamp(GS.hero.hp / GS.hero.maxHp, 0, 1);
+  this.GS.heroHpBar.width = 220 * ratio;
+  this.GS.heroHpLabel.setText(`HP ${GS.hero.hp}/${GS.hero.maxHp}`);
+
+  GS.hero.effects.slowMs = Math.max(0, GS.hero.effects.slowMs - delta);
+  GS.hero.effects.atkDebuffMs = Math.max(0, GS.hero.effects.atkDebuffMs - delta);
+  if (GS.hero.effects.slowMs > 0) spd = Math.floor(spd * 0.6);
+
+
+
 
   // Monsters update
   for (const m of GS.monsters.getChildren()) {
+    if (!m || !m.active) continue;
     GS.updateMonsterEffects(m, delta);
-    // si le monstre a été détruit pendant les effets, on saute
-    if (!m || !m.active || !m.body) continue;
     GS.applyMonsterMovement(this, m);
   }
+  // barre HP monsters update 
+  GS.updateAllHpBars();
 
   // UI
   this.GS.uiText.setText([
-    `HÉROS | HP: ${GS.hero.hp}/${GS.hero.maxHp} | ATK: ${GS.hero.atk} | DEF: ${GS.hero.def} | SPD: ${GS.hero.speed}`,
+    `HÉROS | HP: ${GS.hero.hp}/${GS.hero.maxHp} | ATK: ${GS.hero.atk} | DEF: ${GS.hero.def} | SPD: ${spd}`,
     `ADN: ${GS.hero.dna}`,
     `Monstres: ${GS.monsters.getChildren().length} | PCR: ${GS.inventory.pcrUnlocked ? "Débloquée" : "Verrouillée"}`,
     `PCR CD: W=${Math.ceil(GS.pcr.cd.denaturation/1000)}s X=${Math.ceil(GS.pcr.cd.hybridation/1000)}s C=${Math.ceil(GS.pcr.cd.elongation/1000)}s`
   ]);
+
+  
 
   if (GS.hero.hp <= 0) {
     GS.hero.hp = 0;
