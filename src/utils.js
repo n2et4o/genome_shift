@@ -284,3 +284,21 @@ GS.updateAllHpBars = function () {
     if (m.hpBar) m.hpBar.width = 34 * r;
   }
 };
+
+// realise l'etat de confusion : inverse les controles du héros pendant un certain temps
+GS.randomControlMap = function () {
+  const dirs = ["left", "right", "up", "down"];
+
+  // shuffle Fisher-Yates
+  for (let i = dirs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+  }
+
+  return {
+    left: dirs[0],
+    right: dirs[1],
+    up: dirs[2],
+    down: dirs[3]
+  };
+};

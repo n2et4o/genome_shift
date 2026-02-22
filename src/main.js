@@ -236,6 +236,13 @@ function create() {
 
   });
 
+  const map = GS.hero.effects.controlMap || {
+    left: "left",
+    right: "right",
+    up: "up",
+    down: "down"
+  };
+
   this.input.keyboard.on("keydown-UP", () => {
     if (!this.GS.invOpen) return;
     this.GS.invIndex = Math.max(0, this.GS.invIndex - 1);
@@ -317,6 +324,14 @@ function update(time, delta) {
 
   const player = this.GS.player;
   const cursors = this.GS.cursors;
+
+  const map = GS.hero.effects.controlMap || { left: "left", right: "right", up: "up", down: "down" };
+
+  const leftDown  = cursors[map.left]?.isDown;
+  const rightDown = cursors[map.right]?.isDown;
+  const upDown    = cursors[map.up]?.isDown;
+  const downDown  = cursors[map.down]?.isDown;
+
   // en tout début de update
   if (time % 500 < delta) console.log("paused=", this.GS.isPaused, "invOpen=", this.GS.invOpen, "radial=", GS.radial.visible);
 
@@ -339,11 +354,11 @@ function update(time, delta) {
 
     // Si tu veux gérer la confusion plus tard, tu pourras inverser ici
 
-    if (cursors.left.isDown) body.setVelocityX(-spd);
-    else if (cursors.right.isDown) body.setVelocityX(spd);
+    if (leftDown) body.setVelocityX(-spd);
+    else if (rightDown) body.setVelocityX(spd);
 
-    if (cursors.up.isDown) body.setVelocityY(-spd);
-    else if (cursors.down.isDown) body.setVelocityY(spd);
+    if (upDown) body.setVelocityY(-spd);
+    else if (downDown) body.setVelocityY(spd);
 
   // === Update HUD hero HP ===
   const ratio = Phaser.Math.Clamp(GS.hero.hp / GS.hero.maxHp, 0, 1);
@@ -353,6 +368,11 @@ function update(time, delta) {
   GS.hero.effects.slowMs = Math.max(0, GS.hero.effects.slowMs - delta);
   GS.hero.effects.atkDebuffMs = Math.max(0, GS.hero.effects.atkDebuffMs - delta);
   if (GS.hero.effects.slowMs > 0) spd = Math.floor(spd * 0.6);
+
+  GS.hero.effects.confusionMs = Math.max(0, (GS.hero.effects.confusionMs || 0) - delta);
+  if (GS.hero.effects.confusionMs <= 0 && GS.hero.effects.controlMap) {
+    GS.hero.effects.controlMap = null; // retour normal
+  }
 
 
 

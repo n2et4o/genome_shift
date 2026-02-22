@@ -58,8 +58,6 @@ GS.spawnDarkShifter = function(scene, x, y) {
   return h;
 };
 
-// // barre HP Dark Shifter
-// GS.attachHpBar(scene, h);
 
 // Quand un Dark Shifter touche le héros
 GS.onDarkShifterTouch = function(scene, dark) {
@@ -75,10 +73,28 @@ GS.onDarkShifterTouch = function(scene, dark) {
   GS.hero.dna = GS.mutateDnaOnce(GS.hero.dna, type);
   GS.applyDnaToHero(GS.hero.dna);
 
+  const heroInitial = GS.fasta["hero_initial"] || GS.hero.dna;
+  const heroCurrent = GS.hero.dna;
+
+  fetch("/api/save-dna", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      hero_initial: heroInitial,
+      hero_current: heroCurrent
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) console.error(data.error);
+  })
+  .catch(err => console.error("Erreur save DNA:", err));
+
   // Effets
   if (type === "inversion") {
-    GS.hero.effects.confusionMs = 4000; // (si tu veux l'utiliser plus tard)
-    GS.pushMsg("⚠ Dark Shifter : Inversion → Confusion !");
+    GS.hero.effects.confusionMs = 12000;
+    GS.hero.effects.controlMap = GS.randomControlMap();
+    GS.pushMsg("⚠ Dark Shifter : Inversion → Contrôles mélangés !");
   }
 
   if (type === "deletion") {

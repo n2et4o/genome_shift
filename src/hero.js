@@ -12,7 +12,9 @@ GS.hero = {
 GS.hero.effects = {
   slowMs: 0,
   atkDebuffMs: 0,
-  atkDebuffValue: 0
+  atkDebuffValue: 0,
+  confusionMs: 0,
+  controlMap: null
 };
 
 GS.hero.lastGenomeHitAt = 0;

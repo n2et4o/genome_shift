@@ -1,11 +1,12 @@
 >hero
 ATCGATCGATCGATCG
-
 >monster_slime
 GGGCCCATATATATAT
-
 >monster_wolf
 ATATGCGCGCATATGC
-
 >dark_shifter
 GCGCGCGCGCGCGCGC
+>hero_initial
+ATGTCGCTAGCCGG
+>hero_current
+ATGTCGCTAGCCGG
