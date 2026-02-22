@@ -7,6 +7,7 @@ const H = 600;
 const worldW = 3000;
 const worldH = 2000;
 
+
 const config = {
   type: Phaser.AUTO,
   width: W,
@@ -33,6 +34,10 @@ function create() {
     invText: null
   };
   this.GS.isPaused = false;
+
+  // creation de la map (chunks)
+  GS.initMap(this);
+
 
   // FASTA global (utilisé par Monster)
   const fastaText = this.cache.text.get("dna_fasta");
@@ -429,6 +434,10 @@ function update(time, delta) {
   }
   GS.ensureChunksAroundPlayer(this);
   GS.updateDarkProximity(this);
+  GS.updateMap(this);
+  GS.unlockMapLevel(1); // quand le joueur ramasse le livre PCR
+  GS.unlockMapLevel(2); // après PCR complète dans l'ordre
+  GS.unlockMapLevel(3); // quand il ramasse le livre volcano
 
 
 }
