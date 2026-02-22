@@ -132,10 +132,26 @@ GS.spawnEntitiesForChunk = function (scene, cx, cy) {
   );
 
   for (let i = 0; i < nMonsters; i++) {
-    const rx = GS.hash2(cx * 1000 + i, cy * 1000 + 33, GS.world.seed);
-    const ry = GS.hash2(cx * 1000 + 77, cy * 1000 + i, GS.world.seed);
-    const x = x0 + 80 + Math.floor(rx * (s - 160));
-    const y = y0 + 80 + Math.floor(ry * (s - 160));
+    let x, y;
+    for (let tries = 0; tries < 12; tries++) {
+      const rx = GS.hash2(cx * 1000 + i + tries, cy * 1000 + 33, GS.world.seed);
+      const ry = GS.hash2(cx * 1000 + 77, cy * 1000 + i + tries, GS.world.seed);
+      x = x0 + 80 + Math.floor(rx * (s - 160));
+      y = y0 + 80 + Math.floor(ry * (s - 160));
+
+      // pas trop près du joueur
+      const dp = Phaser.Math.Distance.Between(scene.GS.player.x, scene.GS.player.y, x, y);
+      if (dp < 120) continue;
+
+      // pas trop près des autres mobs déjà spawn dans ce chunk
+      const already = GS.world.chunkEntities.get(k)?.monsters ?? [];
+      let ok = true;
+      for (const other of already) {
+        if (!other) continue;
+        if (Phaser.Math.Distance.Between(other.x, other.y, x, y) < 60) { ok = false; break; }
+      }
+      if (ok) break;
+    }
 
     const rKind = GS.hash2(cx * 10 + i, cy * 10 + i, GS.world.seed);
     const kind = (rKind > 0.88) ? "dark" : "normal";

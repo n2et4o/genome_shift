@@ -64,9 +64,22 @@ function create() {
   
   // Monsters group (  AVANT darkshifters)
   GS.monsters = this.physics.add.group();
+  // Collisions physiques (empêche la superposition)
+  this.physics.add.collider(GS.monsters, GS.monsters);             // monstre vs monstre
+  this.physics.add.collider(this.GS.player, GS.monsters,           // joueur vs monstres
+    (p, m) => GS.onHeroHit(this, m), null, this
+  );
 
   // darkshifter
   GS.initDarkShifters(this);
+  // --- Collisions DarkShifters ---
+  this.physics.add.collider(GS.darkShifters, GS.darkShifters);  // dark vs dark
+  this.physics.add.collider(GS.darkShifters, GS.monsters);      // dark vs monsters (normal + dark si tu les ajoutes aussi)
+
+  // Héros vs darkshifters : collision physique + dégâts
+  this.physics.add.collider(this.GS.player, GS.darkShifters,
+  (p, d) => GS.onHeroHit(this, d), null, this
+);
   GS.spawnDarkShifter(this, 600, 300);
   GS.spawnDarkShifter(this, 900, 500);
   // Loot group
@@ -170,7 +183,7 @@ function create() {
 
 
   // Overlap monsters -> hero hit
-  this.physics.add.overlap(player, GS.monsters, (p, m) => GS.onHeroHit(this, m), null, this);
+  //this.physics.add.overlap(player, GS.monsters, (p, m) => GS.onHeroHit(this, m), null, this);
   //   Génère les chunks autour du joueur au départ
   GS.ensureChunksAroundPlayer(this);
 

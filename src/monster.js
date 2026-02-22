@@ -23,6 +23,10 @@ GS.spawnMonster = function (scene, fastaId, x, y, opts = {}) {
   const color = (opts.kind === "dark") ? 0xa855f7 : 0xf87171;
   const rect = scene.add.rectangle(x, y, 26, 26, color);
   scene.physics.add.existing(rect);
+  rect.body.setSize(20, 20, true); // body plus petit que le sprite (26x26)
+  rect.body.setBounce(0.8, 0.8);
+  rect.body.setDamping(true);
+  rect.body.setDrag(80, 80);
   rect.body.setCollideWorldBounds(true);
   rect.body.setBounce(1, 1); // rebondit sur les limites
 
@@ -112,6 +116,12 @@ GS.onHeroHit = function (scene, monster) {
   const dmg = Math.max(1, GS.currentMonsterAtk(monster) - GS.hero.def);
   GS.hero.hp -= dmg;
   GS.flashRect(scene.GS.player, 0xfacc15, 90);
+
+  // petit recul (knockback) pour éviter l'empilement sur le héros
+  if (monster.body && scene.GS.player.body) {
+    const ang = Phaser.Math.Angle.Between(monster.x, monster.y, scene.GS.player.x, scene.GS.player.y);
+    monster.body.setVelocity(-Math.cos(ang) * 120, -Math.sin(ang) * 120);
+  }
 
   if (monster.gs.kind === "dark") {
     console.log("⚠ Dark Shifter touched the hero (future: genome shift).");

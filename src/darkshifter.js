@@ -22,6 +22,7 @@ GS.initDarkShifters = function(scene) {
 GS.spawnDarkShifter = function(scene, x, y) {
   const h = scene.add.rectangle(x, y, 26, 26, 0x7c3aed);
   scene.physics.add.existing(h);
+  h.body.setSize(20, 20, true); // body plus petit que le sprite (26x26)
 
   //   Physique + mouvement
   h.body.setCollideWorldBounds(true);
