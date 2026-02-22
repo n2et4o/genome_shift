@@ -64,6 +64,18 @@ GS.spawnMonster = function (scene, fastaId, x, y, opts = {}) {
 
 // AI movement
 GS.applyMonsterMovement = function (scene, m) {
+
+  // --- Vision = écran ---
+    const cam = scene.cameras.main;
+    const view = cam.worldView; // rectangle du monde visible à l’écran
+
+    const inView = Phaser.Geom.Rectangle.Contains(view, m.x, m.y);
+    if (!inView) {
+      // option 1 : ils s'arrêtent hors écran
+      if (m.body) m.body.setVelocity(0, 0);
+      return;
+    }
+
   //   si le monstre a été détruit pendant les effets, on saute
   if (!m || !m.active || !m.body) return;
   if (m.gs.effects.stunMs > 0) {

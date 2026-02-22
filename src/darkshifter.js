@@ -4,6 +4,9 @@
 
 window.GS = window.GS || {};
 
+GS.DARK_TRIGGER_RANGE = 50;      // distance en pixels (modifiable)
+GS.DARK_EFFECT_COOLDOWN = 4000;  // délai entre 2 attaques du même darkshifter
+
 GS.initDarkShifters = function(scene) {
   GS.darkShifters = scene.physics.add.group();
 
@@ -118,4 +121,34 @@ GS.onDarkShifterTouch = function(scene, dark) {
   localStorage.setItem("GS_HERO_DNA", GS.hero.dna);
 
   GS.pushMsg(`ADN modifié: ${before} → ${GS.hero.dna}`);
+};
+
+
+// Attaque le hero si proche (de 50pixels)  
+GS.applyRandomDarkEffect = function(scene, dark) {
+
+  const effects = ["inversion", "deletion", "substitution", "insertion"];
+  const type = Phaser.Utils.Array.GetRandom(effects);
+
+  if (type === "inversion") {
+    GS.hero.effects.confusionMs = 12000;
+    GS.hero.effects.controlMap = GS.randomControlMap();
+    GS.pushMsg("⚠ Dark Shifter : Inversion → Contrôles mélangés !");
+  }
+
+  if (type === "deletion") {
+    GS.hero.hp = Math.max(1, GS.hero.hp - 10);
+    GS.pushMsg("⚠ Dark Shifter : Délétion → -10 HP");
+  }
+
+  if (type === "substitution") {
+    GS.hero.effects.atkDebuffMs = 4000;
+    GS.hero.effects.atkDebuffValue = 3;
+    GS.pushMsg("⚠ Dark Shifter : Substitution → ATK réduit");
+  }
+
+  if (type === "insertion") {
+    GS.hero.effects.slowMs = 3000;
+    GS.pushMsg("⚠ Dark Shifter : Insertion → Ralentissement");
+  }
 };

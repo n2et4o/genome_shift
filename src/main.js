@@ -293,6 +293,9 @@ function create() {
   // Caméra suit le joueur
   this.cameras.main.startFollow(this.GS.player, true, 0.08, 0.08);
 
+  // Limites de la caméra (optionnel, ici on peut dépasser un peu)
+  this.cameras.main.setViewport(0, 0, 1200, 600);
+
   
 
   // Décor simple (points)
@@ -318,16 +321,6 @@ function create() {
     fontFamily: "Arial", fontSize: "14px", color: "#ffffff"
   }).setScrollFactor(0).setDepth(3002);
 
-
-//   function setPaused(scene, paused) {
-//   scene.GS.isPaused = paused;
-
-//   // Pause physics
-//   scene.physics.world.isPaused = paused;
-
-//   // Optionnel : bloquer inputs de déplacement en pause
-//   // (on le fera via update)
-// }
 
 }
 
@@ -407,6 +400,25 @@ function update(time, delta) {
     `PCR CD: W=${Math.ceil(GS.pcr.cd.denaturation/1000)}s X=${Math.ceil(GS.pcr.cd.hybridation/1000)}s C=${Math.ceil(GS.pcr.cd.elongation/1000)}s`
   ]);
 
+  // effets de Proximité darkshifters
+  GS.updateDarkProximity = function(scene) {
+    if (!GS.darkShifters) return;
+    const hero = scene.GS.player;
+    const now = scene.time.now;
+    for (const dark of GS.darkShifters.getChildren()) {
+      if (!dark || !dark.active) continue;
+      const dist = Phaser.Math.Distance.Between(hero.x, hero.y, dark.x, dark.y);
+      if (dist <= GS.DARK_TRIGGER_RANGE) {
+        if (!dark.gs) dark.gs = {};
+        // cooldown par darkshifter
+        if (now - (dark.gs.lastEffectAt || 0) < GS.DARK_EFFECT_COOLDOWN)
+          continue;
+        dark.gs.lastEffectAt = now;
+        GS.applyRandomDarkEffect(scene, dark);
+      }
+    }
+  };
+
   
 
   if (GS.hero.hp <= 0) {
@@ -416,6 +428,7 @@ function update(time, delta) {
     player.body.enable = false;
   }
   GS.ensureChunksAroundPlayer(this);
+  GS.updateDarkProximity(this);
 
 
 }

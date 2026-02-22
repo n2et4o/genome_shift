@@ -32,7 +32,7 @@ GS.spawnLoot = function (scene, key, x, y) {
     loot.label = label;
 
 
-  return loot; // ✅ AJOUT
+  return loot; // AJOUT
 };
 
 
@@ -41,7 +41,7 @@ GS.onLootPickup = function (scene, loot) {
   if (!GS.inventory.pcr[k].have) {
     GS.inventory.pcr[k].have = true;
     GS.pushMsg(`📦 Réactif obtenu : ${GS.inventory.pcr[k].name}`);
-    GS.pushMsg(GS.inventory.pcr[k].desc);
+    //GS.pushMsg(GS.inventory.pcr[k].desc);
 
     if (GS.checkPcrUnlock()) {
       GS.pushMsg("✅ PCR débloquée ! Touches: W (dénaturation), X (hybridation), C (élongation)");
@@ -57,7 +57,7 @@ GS.onLootPickup = function (scene, loot) {
 
   if (unlockedNow) {
     if (scene?.GS?.pcrHud) {
-      scene.GS.pcrHud.setTitle("PCR"); // ✅ affiche le titre seulement maintenant
+      scene.GS.pcrHud.setTitle("PCR"); // affiche le titre seulement maintenant
     }
     GS.pushMsg("✅ PCR débloquée ! Touches: W (dénaturation), X (hybridation), C (élongation)");
 
