@@ -66,18 +66,18 @@ GS.spawnMonster = function (scene, fastaId, x, y, opts = {}) {
 GS.applyMonsterMovement = function (scene, m) {
 
   // --- Vision = écran ---
-    const cam = scene.cameras.main;
-    const view = cam.worldView; // rectangle du monde visible à l’écran
+  const cam = scene.cameras.main;
+  const view = cam.worldView;
 
-    const inView = Phaser.Geom.Rectangle.Contains(view, m.x, m.y);
-    if (!inView) {
-      // option 1 : ils s'arrêtent hors écran
-      if (m.body) m.body.setVelocity(0, 0);
-      return;
-    }
+  const inView = Phaser.Geom.Rectangle.Contains(view, m.x, m.y);
+  if (!inView) {
+    if (m.body) m.body.setVelocity(0, 0);
+    return;
+  }
 
-  //   si le monstre a été détruit pendant les effets, on saute
+  // si le monstre a été détruit pendant les effets, on saute
   if (!m || !m.active || !m.body) return;
+
   if (m.gs.effects.stunMs > 0) {
     m.body.setVelocity(0);
     return;
@@ -88,16 +88,28 @@ GS.applyMonsterMovement = function (scene, m) {
   const player = scene.GS.player;
 
   const d = Phaser.Math.Distance.Between(player.x, player.y, m.x, m.y);
+
   if (d <= aggroRange) {
     const ang = Phaser.Math.Angle.Between(m.x, m.y, player.x, player.y);
     m.body.setVelocity(Math.cos(ang) * spd, Math.sin(ang) * spd);
   } else {
     if (Math.abs(m.body.velocity.x) + Math.abs(m.body.velocity.y) < 10) {
-      m.body.setVelocity(Phaser.Math.Between(-spd, spd), Phaser.Math.Between(-spd, spd));
+      m.body.setVelocity(
+        Phaser.Math.Between(-spd, spd),
+        Phaser.Math.Between(-spd, spd)
+      );
     } else {
       const vx = Phaser.Math.Clamp(m.body.velocity.x, -spd, spd);
       const vy = Phaser.Math.Clamp(m.body.velocity.y, -spd, spd);
       m.body.setVelocity(vx, vy);
+    }
+  }
+
+  if (m && typeof m.setFlipX === "function") {
+    if (m.body.velocity.x < -5) {
+      m.setFlipX(true);
+    } else if (m.body.velocity.x > 5) {
+      m.setFlipX(false);
     }
   }
 };

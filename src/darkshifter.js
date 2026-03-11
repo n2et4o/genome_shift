@@ -23,11 +23,22 @@ GS.initDarkShifters = function(scene) {
 
 // Création d'un Dark Shifter
 GS.spawnDarkShifter = function(scene, x, y) {
-  const h = scene.add.rectangle(x, y, 26, 26, 0x7c3aed);
+  /*const h = scene.add.rectangle(x, y, 26, 26, 0x7c3aed); // affichage des carres violets
   scene.physics.add.existing(h);
   h.body.setSize(20, 20, true); // body plus petit que le sprite (26x26)
+  */
+  const h = scene.physics.add.sprite(x, y, "darkshifter", 0);
+  h.play("ds_walk");
 
-  //   Physique + mouvement
+  // taille visuelle (à ajuster si tu veux plus grand/petit)
+  h.setScale(0.09); // 384x512 -> ~35x46 à l’écran
+  // hitbox (collision) plus proche de tes anciens carrés
+  h.body.setSize(200, 260, true);  // taille en pixels "avant scale"
+  h.body.setOffset(90, 210);       // centre le body sur le bas du perso
+
+  
+
+    //   Physique + mouvement
   h.body.setCollideWorldBounds(true);
   h.body.setBounce(1, 1);
   h.body.setVelocity(Phaser.Math.Between(-120, 120), Phaser.Math.Between(-120, 120));
@@ -127,6 +138,11 @@ GS.onDarkShifterTouch = function(scene, dark) {
 // Attaque le hero si proche (de 50pixels)  
 GS.applyRandomDarkEffect = function(scene, dark) {
 
+  dark.play("ds_attack", true);
+  dark.once("animationcomplete-ds_attack", () => {
+    if (dark.active) dark.play("ds_walk");
+  });
+
   const effects = ["inversion", "deletion", "substitution", "insertion"];
   const type = Phaser.Utils.Array.GetRandom(effects);
 
@@ -151,4 +167,70 @@ GS.applyRandomDarkEffect = function(scene, dark) {
     GS.hero.effects.slowMs = 3000;
     GS.pushMsg("⚠ Dark Shifter : Insertion → Ralentissement");
   }
+
 };
+
+
+GS.preloadDarkShifter = function (scene) {
+  // marche
+  scene.load.image("ds_walk_1", "images/d1.png");
+  scene.load.image("ds_walk_2", "images/d2.png");
+  scene.load.image("ds_walk_3", "images/d3.png");
+  scene.load.image("ds_walk_4", "images/d4.png");
+
+  // attaque
+  scene.load.image("ds_attack_1", "images/da1.png");
+  scene.load.image("ds_attack_2", "images/da2.png");
+  scene.load.image("ds_attack_3", "images/da3.png");
+  scene.load.image("ds_attack_4", "images/da4.png");
+};
+
+GS.createDarkShifterAnims = function (scene) {
+  if (scene.anims.exists("ds_walk")) return;
+
+  scene.anims.create({
+    key: "ds_walk",
+    frames: [
+      { key: "ds_walk_1" },
+      { key: "ds_walk_2" },
+      { key: "ds_walk_3" },
+      { key: "ds_walk_4" }
+    ],
+    frameRate: 8,
+    repeat: -1
+  });
+
+  scene.anims.create({
+    key: "ds_attack",
+    frames: [
+      { key: "ds_attack_1" },
+      { key: "ds_attack_2" },
+      { key: "ds_attack_3" },
+      { key: "ds_attack_4" }
+    ],
+    frameRate: 6,
+    repeat: 0
+  });
+};
+
+GS.updateDarkProximity = function(scene) {
+    if (!GS.darkShifters) return;
+    const hero = scene.GS.player;
+    const now = scene.time.now;
+    for (const dark of GS.darkShifters.getChildren()) {
+      if (!dark || !dark.active) continue;
+      const dist = Phaser.Math.Distance.Between(hero.x, hero.y, dark.x, dark.y);
+      if (dist <= GS.DARK_TRIGGER_RANGE) {
+        if (!dark.gs) dark.gs = {};
+        // cooldown par darkshifter
+        if (now - (dark.gs.lastEffectAt || 0) < GS.DARK_EFFECT_COOLDOWN)
+          continue;
+        dark.gs.lastEffectAt = now;
+        dark.play("ds_attack", true);
+        dark.once("animationcomplete-ds_attack", () => {
+          if (dark.active) dark.play("ds_walk");
+        });
+        GS.applyRandomDarkEffect(scene, dark);
+      }
+    }
+  };

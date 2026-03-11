@@ -20,6 +20,8 @@ new Phaser.Game(config);
 
 function preload() {
   this.load.text("dna_fasta", "data/dna.fasta");
+  GS.preloadDarkShifter(this);
+  GS.BG.preload(this);
 }
 
 function create() {
@@ -34,6 +36,8 @@ function create() {
     invText: null
   };
   this.GS.isPaused = false;
+
+  GS.BG.create(this);
 
   // creation de la map (chunks)
   GS.initMap(this);
@@ -75,6 +79,8 @@ function create() {
     (p, m) => GS.onHeroHit(this, m), null, this
   );
 
+  GS.createDarkShifterAnims(this); // animation des darkshifters (doit être avant la création des darkshifters)
+
   // darkshifter
   GS.initDarkShifters(this);
   // --- Collisions DarkShifters ---
@@ -84,17 +90,23 @@ function create() {
   // Héros vs darkshifters : collision physique + dégâts
   this.physics.add.collider(this.GS.player, GS.darkShifters,
   (p, d) => GS.onHeroHit(this, d), null, this
-);
+  );
+
   GS.spawnDarkShifter(this, 600, 300);
-  GS.spawnDarkShifter(this, 900, 500);
+  //GS.spawnDarkShifter(this, 900, 500);
   // Loot group
   GS.lootGroup = this.physics.add.staticGroup();
 
   // Spawn loot PCR
-  GS.spawnLoot(this, "matrix", 420, 120);
-  GS.spawnLoot(this, "primers", 860, 120);
-  GS.spawnLoot(this, "dntp", 420, 470);
-  GS.spawnLoot(this, "polymerase", 860, 470);
+  // GS.spawnLoot(this, "matrix", 420, 120);
+  // GS.spawnLoot(this, "primers", 860, 120);
+  // GS.spawnLoot(this, "dntp", 420, 470);
+  // GS.spawnLoot(this, "polymerase", 860, 470);
+
+  GS.spawnLoot(this, "matrix", 20, 20);
+  GS.spawnLoot(this, "primers", 60, 120);
+  GS.spawnLoot(this, "dntp", 40, 70);
+  GS.spawnLoot(this, "polymerase", 86, 47);
   
 
   // Overlap loot
@@ -405,24 +417,26 @@ function update(time, delta) {
     `PCR CD: W=${Math.ceil(GS.pcr.cd.denaturation/1000)}s X=${Math.ceil(GS.pcr.cd.hybridation/1000)}s C=${Math.ceil(GS.pcr.cd.elongation/1000)}s`
   ]);
 
-  // effets de Proximité darkshifters
-  GS.updateDarkProximity = function(scene) {
-    if (!GS.darkShifters) return;
-    const hero = scene.GS.player;
-    const now = scene.time.now;
-    for (const dark of GS.darkShifters.getChildren()) {
-      if (!dark || !dark.active) continue;
-      const dist = Phaser.Math.Distance.Between(hero.x, hero.y, dark.x, dark.y);
-      if (dist <= GS.DARK_TRIGGER_RANGE) {
-        if (!dark.gs) dark.gs = {};
-        // cooldown par darkshifter
-        if (now - (dark.gs.lastEffectAt || 0) < GS.DARK_EFFECT_COOLDOWN)
-          continue;
-        dark.gs.lastEffectAt = now;
-        GS.applyRandomDarkEffect(scene, dark);
-      }
-    }
-  };
+  GS.updateDarkProximity(this);
+
+  // // effets de Proximité darkshifters
+  // GS.updateDarkProximity = function(scene) {
+  //   if (!GS.darkShifters) return;
+  //   const hero = scene.GS.player;
+  //   const now = scene.time.now;
+  //   for (const dark of GS.darkShifters.getChildren()) {
+  //     if (!dark || !dark.active) continue;
+  //     const dist = Phaser.Math.Distance.Between(hero.x, hero.y, dark.x, dark.y);
+  //     if (dist <= GS.DARK_TRIGGER_RANGE) {
+  //       if (!dark.gs) dark.gs = {};
+  //       // cooldown par darkshifter
+  //       if (now - (dark.gs.lastEffectAt || 0) < GS.DARK_EFFECT_COOLDOWN)
+  //         continue;
+  //       dark.gs.lastEffectAt = now;
+  //       GS.applyRandomDarkEffect(scene, dark);
+  //     }
+  //   }
+  // };
 
   
 
@@ -438,6 +452,7 @@ function update(time, delta) {
   GS.unlockMapLevel(1); // quand le joueur ramasse le livre PCR
   GS.unlockMapLevel(2); // après PCR complète dans l'ordre
   GS.unlockMapLevel(3); // quand il ramasse le livre volcano
+  GS.BG.update(this, time, delta);
 
 
 }
